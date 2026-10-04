@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="fr" data-theme="casino">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Blackjack École</title>
+<meta name="theme-color" content="#0b1a14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Blackjack">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.0/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.19.0/dist/katex.min.js"></script>
+<style>
+  /* ================= THÈMES ================= */
+  :root, [data-theme="casino"] {
+    --bg: #0b1a14; --bg2: #10261d; --glow: rgba(46,140,96,.25); --panel: rgba(255,255,255,.05); --solid: #12271f;
+    --text: #eef3ef; --muted: #8fa89a; --border: rgba(255,255,255,.09); --accent: #d4af37; --accent2: #f3d77a;
+    --on-accent: #1a1405; --user: linear-gradient(135deg, #1f4a37, #173a2b); --code: #06100c; --danger: #ef6f5e; --ok: #4cc38a;
+  }
+  [data-theme="onyx"] {
+    --bg: #0a0a0b; --bg2: #141416; --glow: rgba(200,30,50,.18); --panel: rgba(255,255,255,.045); --solid: #161618;
+    --text: #f2f2f3; --muted: #8d8d94; --border: rgba(255,255,255,.09); --accent: #e0263f; --accent2: #ff6b7d;
+    --on-accent: #fff; --user: linear-gradient(135deg, #2a1418, #1e1012); --code: #050506; --danger: #ff6b6b; --ok: #4cc38a;
+  }
+  [data-theme="minuit"] {
+    --bg: #0b0d1f; --bg2: #121633; --glow: rgba(124,92,255,.25); --panel: rgba(255,255,255,.05); --solid: #151a3a;
+    --text: #eef0ff; --muted: #9196c2; --border: rgba(255,255,255,.1); --accent: #8b6cff; --accent2: #5ad1ff;
+    --on-accent: #fff; --user: linear-gradient(135deg, #2b2470, #1d2660); --code: #070818; --danger: #ff7a8a; --ok: #4cd6a0;
+  }
+  [data-theme="ivoire"] {
+    --bg: #f7f4ee; --bg2: #ffffff; --glow: rgba(176,32,48,.08); --panel: rgba(0,0,0,.035); --solid: #ffffff;
+    --text: #1a1816; --muted: #7a756c; --border: rgba(0,0,0,.1); --accent: #a8192e; --accent2: #d94a5c;
+    --on-accent: #fff; --user: linear-gradient(135deg, #1d1c1a, #34312d); --code: #f1ede5; --danger: #b3261e; --ok: #2e9d62;
+  }
+  [data-theme="ivoire"] .row.user .bubble { color: #f7f4ee; }
+
+  /* ================= BASE ================= */
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { margin: 0; color: var(--text); overflow: hidden; display: flex; flex-direction: column;
+    background: radial-gradient(900px 500px at 80% -10%, var(--glow), transparent 60%), linear-gradient(var(--bg2), var(--bg) 45%);
+    background-color: var(--bg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+  button, textarea, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: none; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--muted); flex-shrink: 0; }
+  .icon-btn:active { background: var(--panel); }
+  .icon-btn svg { width: 21px; height: 21px; }
+  .serif { font-family: Georgia, "Times New Roman", serif; }
+
+  .logo { width: 30px; height: 36px; border-radius: 7px; flex-shrink: 0; display: grid; place-items: center; position: relative;
+    background: linear-gradient(160deg, #1b1b1d, #050506); border: 1px solid rgba(255,255,255,.15); box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+  .logo svg { width: 58%; fill: var(--accent); }
+  .logo::before, .logo::after { content: "A"; position: absolute; font: 700 7px/1 Georgia, serif; color: var(--accent); }
+  .logo::before { top: 3px; left: 4px; } .logo::after { bottom: 3px; right: 4px; transform: rotate(180deg); }
+
+  /* ================= EN-TÊTE ================= */
+  header { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(12px); z-index: 3; }
+  .title { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .title b { font: 700 18px/1.1 Georgia, serif; display: block; }
+  .title small { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .dot.busy { background: var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  /* ================= CONVERSATION ================= */
+  #scroller { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 18px 14px 30px; display: flex; flex-direction: column; gap: 20px; }
+  .row { display: flex; animation: rise .3s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+  .row.user { justify-content: flex-end; }
+  .bubble { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+  .row.user .bubble { background: var(--user); padding: 10px 14px; border-radius: 18px 18px 4px 18px; max-width: 86%;
+    white-space: pre-wrap; border: 1px solid var(--border); }
+  .row.assistant .bubble { flex: 1; }
+  .who { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--accent); }
+  .who .logo { width: 22px; height: 27px; border-radius: 5px; } .who .logo::before, .who .logo::after { display: none; }
+  .content > :first-child { margin-top: 0; } .content > :last-child { margin-bottom: 0; }
+  .content p, .content ul, .content ol { margin: 0 0 .75em; }
+  .content h1, .content h2, .content h3 { margin: 1em 0 .4em; line-height: 1.3; font-family: Georgia, serif; }
+  .content h1 { font-size: 1.3em; } .content h2 { font-size: 1.17em; } .content h3 { font-size: 1.05em; }
+  .content ul, .content ol { padding-left: 1.3em; }
+  .content li::marker { color: var(--accent); }
+  .content blockquote { margin: 0 0 .75em; padding: 6px 12px; border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 8px 8px 0; }
+  .content code { background: var(--code); padding: 1px 5px; border-radius: 5px; font-size: .88em; font-family: ui-monospace, Consolas, monospace; }
+  .content pre { background: var(--code); padding: 12px; border-radius: 10px; overflow-x: auto; border: 1px solid var(--border); }
+  .content pre code { padding: 0; background: none; }
+  .content table { border-collapse: collapse; margin: 0 0 .8em; display: block; overflow-x: auto; max-width: 100%; }
+  .content th, .content td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+  .content th { background: var(--panel); }
+  .content .katex-display { overflow-x: auto; overflow-y: hidden; padding: 6px 0; margin: .5em 0; }
+  .content .katex { font-size: 1.08em; }
+  .think { margin: 0 0 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+  .think summary { padding: 8px 12px; font-size: 13px; color: var(--muted); cursor: pointer; list-style: none; display: flex; gap: 8px; align-items: center; }
+  .think summary::before { content: "▸"; color: var(--accent); transition: transform .15s; }
+  .think[open] summary::before { transform: rotate(90deg); }
+  .think .content { padding: 0 12px 10px; font-size: 14px; color: var(--muted); }
+  .meta { display: flex; gap: 2px; margin-top: 8px; flex-wrap: wrap; }
+  .meta button { color: var(--muted); padding: 6px 9px; border-radius: 9px; font-size: 13px; display: flex; gap: 5px; align-items: center; }
+  .meta button:active { background: var(--panel); }
+  .meta svg { width: 15px; height: 15px; }
+  .sources { margin-top: 10px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel); font-size: 13px; }
+  .sources b { color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px; }
+  .sources a { color: var(--accent); text-decoration: none; display: block; padding: 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pill.off { opacity: .5; }
+  .typing { display: flex; gap: 5px; padding: 6px 0; }
+  .typing span { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .2; transform: scale(.8); } 40% { opacity: 1; transform: none; } }
+  .error { color: var(--danger); }
+
+  /* Accueil */
+  .empty { text-align: center; padding-top: 4vh; }
+  .empty h1 { margin: 14px 0 4px; font: 700 30px/1.15 Georgia, serif; }
+  .empty h1 span { color: var(--accent); }
+  .empty p { color: var(--muted); margin: 0 0 22px; font-size: 15px; }
+  .hero { width: 64px; height: 78px; margin: 0 auto; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(160deg, #1d1d20, #060607); border: 1px solid rgba(255,255,255,.15);
+    box-shadow: 0 18px 40px -12px rgba(0,0,0,.7); transform: rotate(-6deg); }
+  .hero svg { width: 34px; fill: var(--accent); filter: drop-shadow(0 0 10px var(--accent)); }
+  .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
+  .chip { border: 1px solid var(--border); background: var(--panel); border-radius: 14px; padding: 12px; }
+  .chip:active { border-color: var(--accent); }
+  .chip .ic { font-size: 20px; display: block; margin-bottom: 4px; }
+  .chip b { display: block; font-size: 14px; }
+  .chip small { color: var(--muted); font-size: 12.5px; line-height: 1.35; display: block; }
+
+  /* ================= SAISIE ================= */
+  footer { padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); }
+  .composer { max-width: 760px; margin: 0 auto; background: var(--solid); border: 1px solid var(--border); border-radius: 22px;
+    padding: 6px; box-shadow: 0 10px 30px -16px rgba(0,0,0,.7); }
+  .composer:focus-within { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+  #input { width: 100%; border: none; outline: none; resize: none; background: none; padding: 8px 10px; max-height: 160px; min-height: 40px; display: block; }
+  #input::placeholder { color: var(--muted); }
+  .comp-row { display: flex; align-items: center; gap: 6px; padding: 0 2px 2px; }
+  .pill { display: flex; align-items: center; gap: 6px; padding: 7px 11px; white-space: nowrap; border-radius: 20px; border: 1px solid var(--border);
+    font-size: 13px; color: var(--muted); transition: .15s; }
+  .pill svg { width: 16px; height: 16px; }
+  .pill.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .grow { flex: 1; }
+  #subjectPill { position: relative; white-space: nowrap; }
+  #subjectSel { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+  .subjects { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 14px; margin: 0 -14px 6px; padding-left: 14px; padding-right: 14px;
+    scrollbar-width: none; scroll-snap-type: x proximity; }
+  .subjects::-webkit-scrollbar { display: none; }
+  .subj { flex-shrink: 0; padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--panel);
+    font-size: 14px; white-space: nowrap; scroll-snap-align: center; }
+  .subj.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+  #send { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--on-accent); }
+  #send svg { width: 19px; height: 19px; }
+  #send:disabled { opacity: .4; }
+
+  /* ================= PANNEAUX ================= */
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 20; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(310px, 86vw); background: var(--solid); z-index: 21;
+    transform: translateX(-102%); transition: transform .25s ease; display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top); border-right: 1px solid var(--border); }
+  .drawer.on { transform: none; }
+  .drawer-top { padding: 14px; display: flex; align-items: center; gap: 10px; }
+  .drawer-top b { font: 700 19px Georgia, serif; flex: 1; }
+  .btn { width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--panel);
+    font-weight: 600; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn svg { width: 17px; height: 17px; }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--on-accent); border: none; box-shadow: 0 8px 22px -10px var(--accent); }
+  .btn.danger { color: var(--danger); }
+  .btn:disabled { opacity: .45; }
+  #convList { flex: 1; overflow-y: auto; padding: 6px 8px 20px; }
+  .conv { display: flex; align-items: center; gap: 6px; padding: 11px 12px; border-radius: 12px; font-size: 14.5px; color: var(--muted); }
+  .conv.active { background: var(--panel); color: var(--text); }
+  .conv span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .conv button { color: var(--muted); padding: 2px 6px; }
+  .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; margin: 18px 0 8px; font-weight: 600; }
+
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 88vh; background: var(--solid); z-index: 21;
+    border-radius: 24px 24px 0 0; border-top: 1px solid var(--border); transform: translateY(103%); transition: transform .28s ease;
+    display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); max-width: 760px; margin: 0 auto; }
+  .sheet.on { transform: none; }
+  .sheet .grip { width: 40px; height: 5px; border-radius: 3px; background: var(--border); margin: 10px auto 0; }
+  .sheet-head { display: flex; align-items: center; padding: 8px 16px 0; }
+  .sheet-head h3 { flex: 1; margin: 0; font: 700 20px Georgia, serif; }
+  .sheet-body { overflow-y: auto; padding: 4px 16px 20px; }
+  .sheet-body p.sub { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
+  textarea.field, input.field, select.field { width: 100%; border: 1px solid var(--border); border-radius: 12px; background: var(--bg);
+    padding: 10px 12px; outline: none; font-size: 15px; }
+  textarea.field { min-height: 150px; resize: vertical; line-height: 1.5; }
+  .field:focus { border-color: var(--accent); }
+  .themes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .theme-opt { border: 2px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 12px; padding: 0; }
+  .theme-opt.on { border-color: var(--accent); }
+  .theme-opt .sw { height: 40px; display: grid; place-items: center; font-size: 18px; }
+  .theme-opt div:last-child { padding: 4px 0; }
+  .models { display: flex; flex-direction: column; gap: 8px; }
+  .model-opt { text-align: left; border: 2px solid var(--border); border-radius: 14px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; }
+  .model-opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .model-opt .ic { font-size: 24px; }
+  .model-opt b { display: block; font-size: 15px; }
+  .model-opt small { color: var(--muted); font-size: 13px; display: block; line-height: 1.35; }
+  .model-opt .tag { margin-left: auto; font-size: 11px; color: var(--accent); border: 1px solid var(--accent); border-radius: 10px; padding: 1px 7px; white-space: nowrap; }
+  .stack { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .note { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  /* ================= INSTALLATION ================= */
+  #setup { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: none; overflow-y: auto;
+    padding: calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom)); }
+  #setup.on { display: block; }
+  .setup-in { max-width: 480px; margin: 0 auto; }
+  .setup-in h1 { font: 700 30px/1.15 Georgia, serif; margin: 18px 0 6px; text-align: center; }
+  .setup-in h1 span { color: var(--accent); }
+  .setup-in > p { text-align: center; color: var(--muted); margin: 0 0 22px; }
+  .progress { height: 10px; border-radius: 6px; background: var(--panel); overflow: hidden; border: 1px solid var(--border); }
+  .progress div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .3s; }
+  #setupStatus { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 40px; overflow-wrap: anywhere; }
+  .warn { border: 1px solid var(--danger); color: var(--danger); border-radius: 12px; padding: 12px; font-size: 14px; display: none; margin-top: 12px; }
+  .warn.on { display: block; }
+
+  #toast { position: fixed; bottom: calc(110px + env(safe-area-inset-bottom)); left: 50%; transform: translate(-50%, 10px); z-index: 50;
+    background: var(--solid); border: 1px solid var(--border); padding: 9px 16px; border-radius: 12px; font-size: 14px;
+    opacity: 0; transition: .2s; pointer-events: none; box-shadow: 0 10px 30px -10px rgba(0,0,0,.6); max-width: 90vw; text-align: center; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ================= IMPRESSION / PDF ================= */
+  #printArea { display: none; }
+  @media print {
+    body { background: #fff !important; color: #111 !important; overflow: visible; display: block; height: auto; }
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block; font: 12pt/1.6 Georgia, serif; color: #111; }
+    #printArea .p-head { display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 16px; }
+    #printArea .p-head b { font-size: 18pt; }
+    #printArea .p-head span { margin-left: auto; font-size: 10pt; color: #555; }
+    #printArea .p-q { background: #f2f2f2; border-left: 4px solid #a8192e; padding: 8px 12px; margin-bottom: 14px; }
+    #printArea .content code, #printArea .content pre { background: #f4f4f4; }
+    #printArea .content th, #printArea .content td { border: 1px solid #999; }
+    #printArea .p-foot { margin-top: 24px; font-size: 9pt; color: #777; border-top: 1px solid #ccc; padding-top: 6px; }
+  }
+  @media (min-width: 800px) { .chips { grid-template-columns: repeat(3, 1fr); } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="spade" viewBox="0 0 24 24"><path d="M12 1.5C9.2 5.6 3.5 8.6 3.5 13.2a4.3 4.3 0 0 0 7.1 3.3L9 22.5h6l-1.6-6a4.3 4.3 0 0 0 7.1-3.3c0-4.6-5.7-7.6-8.5-11.7z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-brain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04Z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-pdf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></symbol>
+  <symbol id="i-plus"viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+</svg>
+
+<header>
+  <button class="icon-btn" id="menuBtn" aria-label="Conversations"><svg><use href="#i-menu"/></svg></button>
+  <div class="title">
+    <div class="logo"><svg><use href="#spade"/></svg></div>
+    <div style="min-width:0"><b>Blackjack</b><small><span class="dot" id="dot"></span><span id="state">Préparation…</span></small></div>
+  </div>
+  <button class="icon-btn" id="memBtn" aria-label="Carnet de suivi"><svg><use href="#i-book"/></svg></button>
+  <button class="icon-btn" id="setBtn" aria-label="Réglages"><svg><use href="#i-gear"/></svg></button>
+</header>
+
+<div id="scroller"><div class="wrap" id="chat"></div></div>
+
+<footer>
+  <div class="composer">
+    <textarea id="input" rows="1" placeholder="Pose ta question de maths, de cours…" enterkeyhint="send"></textarea>
+    <div class="comp-row">
+      <label class="pill on" id="subjectPill"><span id="subjectLbl">📚 Matière</span><select id="subjectSel" aria-label="Matière"></select></label>
+      <button class="pill" id="thinkBtn" title="Réflexion approfondie : plus lent mais plus juste"><svg><use href="#i-brain"/></svg>Réflexion</button>
+      <button class="pill" id="webBtn" title="Vérifier sur Wikipédia quand il y a internet"><svg><use href="#i-globe"/></svg><span id="webLbl">Vérif.</span></button>
+      <div class="grow"></div>
+      <button id="send" aria-label="Envoyer"><svg><use href="#i-send"/></svg></button>
+    </div>
+  </div>
+</footer>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- Conversations -->
+<nav class="drawer" id="drawer">
+  <div class="drawer-top"><div class="logo"><svg><use href="#spade"/></svg></div><b>Blackjack</b>
+    <button class="icon-btn" data-close aria-label="Fermer"><svg><use href="#i-close"/></svg></button></div>
+  <div style="padding:0 14px"><button class="btn primary" id="newChat"><svg><use href="#i-plus"/></svg>Nouvelle question</button></div>
+  <div class="label" style="padding:0 18px">Historique</div>
+  <div id="convList"></div>
+</nav>
+
+<!-- Carnet de suivi -->
+<section class="sheet" id="memSheet">
+  <div class="grip"></div>
+  <div class="sheet-head"><h3>Carnet de suivi</h3><button class="icon-btn" data-close aria-label="Fermer"><svg><use href="#i-close"/></svg></button></div>
+  <div class="sheet-body">
+    <p class="sub">Ce que Blackjack retient de vous deux, pour t'aider un peu mieux chaque jour. Il le met à jour tout seul après vos échanges ; tu peux aussi le modifier.</p>
+    <div class="label">Ma classe</div>
+    <input class="field" id="grade" placeholder="Ex. : Seconde, Terminale spé maths, L1…">
+    <div class="label">Ce que Blackjack a retenu</div>
+    <textarea class="field" id="memory" placeholder="Rien pour l'instant. Discute avec Blackjack, il apprendra à te connaître."></textarea>
+    <div class="stack">
+      <button class="btn primary" id="reviewBtn">Faire le bilan ensemble</button>
+      <button class="btn" id="memUpdateBtn">Mettre à jour le carnet maintenant</button>
+      <button class="btn danger" id="memClearBtn">Effacer le carnet</button>
+    </div>
+  </div>
+</section>
+
+<!-- Réglages -->
+<section class="sheet" id="setSheet">
+  <div class="grip"></div>
+  <div class="sheet-head"><h3>Réglages</h3><button class="icon-btn" data-close aria-label="Fermer"><svg><use href="#i-close"/></svg></button></div>
+  <div class="sheet-body">
+    <div class="label">Thème</div>
+    <div class="themes" id="themes"></div>
+    <div class="label">Cerveau de Blackjack</div>
+    <div class="models" id="modelsSet"></div>
+    <p class="note" id="storageNote"></p>
+    <div class="label">Façon d'expliquer</div>
+    <textarea class="field" id="sysPrompt" style="min-height:120px"></textarea>
+    <div class="stack">
+      <button class="btn" id="resetPrompt">Rétablir la façon d'expliquer par défaut</button>
+      <button class="btn danger" id="wipeModels">Supprimer les modèles téléchargés</button>
+    </div>
+  </div>
+</section>
+
+<!-- Premier lancement : téléchargement du modèle -->
+<div id="setup">
+  <div class="setup-in">
+    <div class="hero" style="margin-top:4vh"><svg><use href="#spade"/></svg></div>
+    <h1>Bienvenue sur <span>Blackjack</span></h1>
+    <p>Ton prof particulier, directement dans ton téléphone. Après ce téléchargement unique, il fonctionne <b>sans internet</b>, même en mode avion.</p>
+    <div class="label">Choisis son cerveau</div>
+    <div class="models" id="modelsSetup"></div>
+    <div class="stack" style="margin-top:18px">
+      <button class="btn primary" id="installBtn">Télécharger et démarrer</button>
+    </div>
+    <div id="dlBox" style="display:none;margin-top:18px">
+      <div class="progress"><div id="bar"></div></div>
+      <div id="setupStatus"></div>
+      <p class="note">Garde l'application ouverte pendant le téléchargement. Le Wi-Fi est conseillé.</p>
+    </div>
+    <div class="warn" id="setupWarn"></div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+<div id="toast"></div>
+
+<script type="module">
+import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm";
+
+// ===================== CONFIGURATION =====================
+const MODELS = [
+  { key: "leger", icon: "♣", name: "Léger", desc: "Rapide, marche sur la plupart des téléphones récents.", size: "≈ 1,3 Go", base: "Qwen3.5-2B" },
+  { key: "fort",  icon: "♠", name: "Fort",  desc: "Meilleur en maths, pour téléphone puissant (8 Go de RAM ou plus).", size: "≈ 2,5 Go", base: "Qwen3.5-4B" },
+  { key: "mini",  icon: "♦", name: "Mini",  desc: "Pour les téléphones plus anciens. Moins fiable en calcul.", size: "≈ 0,6 Go", base: "Qwen3.5-0.8B" },
+];
+const OLD_SYSTEMS = [`Tu es Blackjack, un professeur particulier bienveillant et exigeant, spécialisé en mathématiques et dans les matières scolaires. Tu réponds toujours en français.
+Règles :
+- Explique étape par étape, avec des phrases simples, puis donne le résultat final clairement (en gras).
+- Écris TOUTES les formules en LaTeX : $...$ dans le texte et $$...$$ pour les formules importantes.
+- Vérifie tes calculs avant de répondre. Si un calcul est long, découpe-le.
+- Donne un exemple concret quand c'est utile, et propose un petit exercice pour s'entraîner.
+- Adapte le niveau à la classe de l'élève et à ce que tu sais de lui.
+- Si l'élève propose une réponse, corrige-la avec gentillesse en montrant où est l'erreur.`];
+const DEFAULT_SYSTEM = `Tu es Blackjack, un professeur particulier bienveillant et exigeant, capable d'aider dans toutes les matières scolaires. Tu réponds en français (sauf quand l'élève s'entraîne dans une langue étrangère).
+Règles :
+- Explique étape par étape, avec des phrases simples, puis mets l'essentiel clairement en gras.
+- Donne un exemple concret quand c'est utile, et propose un petit exercice pour s'entraîner.
+- Adapte le niveau à la classe de l'élève et à ce que tu sais de lui.
+- Si l'élève propose une réponse ou un texte, corrige-le avec gentillesse en montrant chaque erreur et la règle qui s'applique.
+- Si tu n'es pas sûr d'une information (date, chiffre, citation), dis-le honnêtement plutôt que d'inventer.
+- Écris les formules (maths, physique, chimie) en LaTeX : $...$ dans le texte et $$...$$ pour les formules importantes.`;
+// Matières : chacune ajoute sa propre façon d'enseigner
+const SUBJECTS = [
+  { id: "auto", icon: "📚", name: "Toutes matières", hint: "Pose ta question, toutes matières…", rule: "" },
+  { id: "maths", icon: "📐", name: "Maths", hint: "Un calcul, une équation, un exercice…",
+    rule: "Matière : MATHÉMATIQUES. Vérifie chaque calcul. Écris toutes les formules en LaTeX. Montre la méthode avant le résultat, puis donne le résultat final en gras." },
+  { id: "francais", icon: "🖋️", name: "Français", hint: "Grammaire, conjugaison, rédaction, texte…",
+    rule: "Matière : FRANÇAIS. Pour la grammaire et l'orthographe, cite la règle et donne des exemples. Pour une rédaction ou un commentaire, donne la méthode et un plan. Si l'élève envoie un texte, corrige toutes les fautes (orthographe, accords, conjugaison, ponctuation) en les listant, puis propose une version corrigée." },
+  { id: "anglais", icon: "🇬🇧", name: "Anglais", hint: "Traduction, grammaire, vocabulaire…",
+    rule: "Matière : ANGLAIS. Explique en français, avec les exemples en anglais et leur traduction. Pour les verbes, donne un tableau de conjugaison. Indique la prononciation approximative des mots difficiles. Si l'élève écrit en anglais, corrige ses erreurs une par une. Si l'élève demande à pratiquer, discute avec lui en anglais simple et corrige-le à la fin de chaque réponse." },
+  { id: "espagnol", icon: "🇪🇸", name: "Espagnol", hint: "Traduction, conjugaison, vocabulaire…",
+    rule: "Matière : ESPAGNOL. Explique en français, avec les exemples en espagnol et leur traduction. Pour les verbes, donne un tableau de conjugaison (yo, tú, él/ella, nosotros, vosotros, ellos). Signale les accents et les verbes irréguliers. Si l'élève écrit en espagnol, corrige ses erreurs une par une. Si l'élève demande à pratiquer, discute avec lui en espagnol simple et corrige-le à la fin de chaque réponse." },
+  { id: "histoire", icon: "🏛️", name: "Histoire-Géo", hint: "Un cours, des dates, une carte, un sujet…",
+    rule: "Matière : HISTOIRE-GÉOGRAPHIE / EMC. Situe toujours dans le temps et l'espace. Donne les dates clés sous forme de frise ou de tableau, les notions et les acteurs importants. Pour une composition, donne un plan détaillé. Signale clairement si tu n'es pas certain d'une date." },
+  { id: "physique", icon: "⚗️", name: "Physique-Chimie", hint: "Un exercice, une formule, une réaction…",
+    rule: "Matière : PHYSIQUE-CHIMIE. Écris les formules en LaTeX, précise toujours les unités et vérifie l'homogénéité. Pour un exercice : données, formule, application numérique, résultat avec unité. Équilibre les équations de réaction." },
+  { id: "svt", icon: "🧬", name: "SVT", hint: "Le vivant, le corps, la Terre…",
+    rule: "Matière : SVT. Explique les mécanismes étape par étape, définis le vocabulaire scientifique et propose des schémas décrits en texte. Pour une question de synthèse, donne un plan." },
+  { id: "philo", icon: "💭", name: "Philosophie", hint: "Une notion, un sujet de dissertation…",
+    rule: "Matière : PHILOSOPHIE. Définis les notions, dégage la problématique, présente plusieurs points de vue d'auteurs, et pour une dissertation propose un plan en trois parties avec arguments et exemples." },
+  { id: "autre", icon: "🌍", name: "Autre langue", hint: "Allemand, italien, arabe…",
+    rule: "Matière : LANGUE ÉTRANGÈRE. Identifie la langue travaillée, explique en français avec des exemples traduits, des tableaux de conjugaison et la prononciation approximative. Corrige les erreurs de l'élève une par une." },
+];
+const CHIPS = [
+  ["📘", "Explique un cours", "Explique-moi simplement le cours sur "],
+  ["✏️", "Exercices corrigés", "Donne-moi 3 exercices progressifs avec la correction sur "],
+  ["✅", "Corrige-moi", "Corrige ma réponse et explique mes erreurs : "],
+  ["🔁", "Traduis et explique", "Traduis et explique-moi cette phrase : "],
+  ["📄", "Fiche de révision", "Fais-moi une fiche de révision complète (définitions, points clés, méthode, exemple) sur "],
+  ["🎯", "Faire le bilan", null],
+];
+const $ = id => document.getElementById(id);
+
+// ===================== STOCKAGE =====================
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("bj_" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("bj_" + k, JSON.stringify(v)); } catch { toast("Mémoire pleine : supprime d'anciennes conversations"); } },
+};
+let convs = store.get("convs", []);
+let currentId = store.get("currentId", null);
+let settings = Object.assign({ theme: "casino", model: null, system: DEFAULT_SYSTEM, think: true, grade: "", subject: "auto", web: true }, store.get("settings", {}));
+if (OLD_SYSTEMS.includes(settings.system)) settings.system = DEFAULT_SYSTEM;
+const subject = () => SUBJECTS.find(s => s.id === settings.subject) || SUBJECTS[0];
+let memory = store.get("memory", "");
+let memMeta = store.get("memMeta", {});           // { [convId]: nombre de messages déjà pris en compte }
+const saveConvs = () => { store.set("convs", convs); store.set("currentId", currentId); };
+const saveSettings = () => store.set("settings", settings);
+const current = () => convs.find(c => c.id === currentId);
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ===================== RENDU : MARKDOWN + MATHS =====================
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function inline(s) {
+  return s.replace(/`([^`\n]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<i>$2</i>");
+}
+function tex(t, display) {
+  if (!window.katex) return esc(display ? `$$${t}$$` : `$${t}$`);
+  try { return katex.renderToString(t, { displayMode: display, throwOnError: false, strict: false, output: "html" }); }
+  catch { return esc(t); }
+}
+function rich(src) {
+  const slots = [];
+  const keep = html => { slots.push(html); return `\u0001${slots.length - 1}\u0001`; };
+  src = src
+    .replace(/```[\w+-]*\n?([\s\S]*?)(?:```|$)/g, (_, c) => keep(`<pre><code>${esc(c.replace(/\n$/, ""))}</code></pre>`))
+    .replace(/\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]/g, (_, a, b) => keep(tex(a ?? b, true)))
+    .replace(/\\\(([\s\S]+?)\\\)|\$([^$\n]+?)\$/g, (_, a, b) => keep(tex(a ?? b, false)));
+  const out = [];
+  let list = null, para = [], table = null;
+  const flushPara = () => { if (para.length) { out.push(`<p>${inline(para.join("<br>"))}</p>`); para = []; } };
+  const flushList = () => { if (list) { out.push(`<${list.tag}>${list.items.map(i => `<li>${inline(i)}</li>`).join("")}</${list.tag}>`); list = null; } };
+  const flushTable = () => {
+    if (!table) return;
+    const rows = table.filter(r => !/^\|?\s*:?-{2,}/.test(r)).map(r => r.replace(/^\||\|$/g, "").split("|").map(c => inline(c.trim())));
+    out.push(`<table><thead><tr>${rows[0].map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>` +
+      rows.slice(1).map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("") + "</tbody></table>");
+    table = null;
+  };
+  const flushAll = () => { flushPara(); flushList(); flushTable(); };
+  for (const raw of esc(src).split("\n")) {
+    const line = raw.trimEnd();
+    let m;
+    if (/^\s*\|/.test(line)) { flushPara(); flushList(); (table ??= []).push(line.trim()); continue; }
+    flushTable();
+    if ((m = line.match(/^\u0001(\d+)\u0001$/)) && slots[m[1]].startsWith("<pre")) { flushAll(); out.push(line); }
+    else if ((m = line.match(/^(#{1,4})\s+(.*)/))) { flushAll(); const n = Math.min(3, m[1].length); out.push(`<h${n}>${inline(m[2])}</h${n}>`); }
+    else if ((m = line.match(/^\s*[-*•]\s+(.*)/)) || (m = line.match(/^\s*\d+[.)]\s+(.*)/))) {
+      flushPara();
+      const tag = /^\s*\d/.test(line) ? "ol" : "ul";
+      if (!list || list.tag !== tag) { flushList(); list = { tag, items: [] }; }
+      list.items.push(m[1]);
+    }
+    else if ((m = line.match(/^&gt;\s?(.*)/))) { flushAll(); out.push(`<blockquote>${inline(m[1])}</blockquote>`); }
+    else if (/^\s*(---|\*\*\*)\s*$/.test(line)) { flushAll(); out.push("<hr>"); }
+    else if (!line.trim()) flushAll();
+    else { flushList(); para.push(line); }
+  }
+  flushAll();
+  return out.join("").replace(/\u0001(\d+)\u0001/g, (_, i) => slots[i]);
+}
+// Sépare la réflexion (<think>…</think>) de la réponse
+function splitThink(text) {
+  const s = text.indexOf("<think>");
+  if (s === -1) {
+    const e = text.indexOf("</think>");   // certains modèles n'écrivent que la balise de fin
+    return e === -1 ? { think: "", answer: text, thinking: false }
+                    : { think: text.slice(0, e).trim(), answer: text.slice(e + 8).trim(), thinking: false };
+  }
+  const e = text.indexOf("</think>", s);
+  if (e === -1) return { think: text.slice(s + 7), answer: "", thinking: true };
+  return { think: text.slice(s + 7, e).trim(), answer: (text.slice(0, s) + text.slice(e + 8)).trim(), thinking: false };
+}
+function renderAssistant(el, text, secs, sources) {
+  const { think, answer, thinking } = splitThink(text);
+  let html = "";
+  if (think || thinking) {
+    const label = thinking ? `Blackjack réfléchit… ${secs ? secs + " s" : ""}` : `Réflexion${secs ? ` (${secs} s)` : ""} — toucher pour voir`;
+    html += `<details class="think"${el.querySelector(".think[open]") ? " open" : ""}><summary>🧠 ${label}</summary><div class="content">${rich(think)}</div></details>`;
+  }
+  html += `<div class="content">${answer ? rich(answer) : thinking ? "" : '<div class="typing"><span></span><span></span><span></span></div>'}</div>`;
+  if (sources?.length) html += `<div class="sources"><b>🌐 Vérifié avec Wikipédia</b>` +
+    sources.map((s, i) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">[${i + 1}] ${esc(s.title)} ↗</a>`).join("") + `</div>`;
+  el.innerHTML = html;
+}
+
+// ===================== AFFICHAGE =====================
+function renderEmpty() {
+  const name = settings.grade ? ` <small style="display:block;font-size:14px;color:var(--muted);font-family:system-ui;margin-top:6px">Niveau : ${esc(settings.grade)}</small>` : "";
+  $("chat").innerHTML = `<div class="empty"><div class="hero"><svg><use href="#spade"/></svg></div>
+    <h1>On révise quoi <span>aujourd'hui</span> ?${name}</h1>
+    <p>Maths, français, langues, histoire, sciences… Je t'explique étape par étape.</p>
+    <div class="subjects" id="subjects"></div><div class="chips"></div></div>`;
+  renderSubjects();
+  const box = $("chat").querySelector(".chips");
+  for (const [ic, title, prompt] of CHIPS) {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.innerHTML = `<span class="ic">${ic}</span><b>${title}</b><small>${prompt ? esc(prompt.replace(/ : $|: $/, "")) + "…" : "Tes progrès et ce qu'on peut améliorer"}</small>`;
+    b.onclick = () => prompt ? (($("input").value = prompt), autoGrow(), $("input").focus()) : review();
+    box.appendChild(b);
+  }
+}
+function renderSubjects() {
+  const box = $("subjects");
+  if (box) {
+    box.innerHTML = "";
+    for (const s of SUBJECTS) {
+      const b = document.createElement("button");
+      b.className = "subj" + (s.id === settings.subject ? " on" : "");
+      b.textContent = `${s.icon} ${s.name}`;
+      b.onclick = () => setSubject(s.id);
+      box.appendChild(b);
+    }
+    box.querySelector(".on")?.scrollIntoView({ inline: "center", block: "nearest" });
+  }
+  $("subjectSel").value = settings.subject;
+  $("subjectLbl").textContent = `${subject().icon} ${subject().id === "auto" ? "Matière" : subject().name}`;
+  $("input").placeholder = subject().hint;
+}
+function setSubject(id) {
+  settings.subject = id; saveSettings();
+  const conv = current();
+  if (conv) { conv.subject = id; saveConvs(); }   // la conversation en cours change aussi de matière
+  renderSubjects();
+}
+function assistantRow() {
+  const row = document.createElement("div");
+  row.className = "row assistant";
+  row.innerHTML = `<div class="bubble"><div class="who"><span class="logo"><svg><use href="#spade"/></svg></span>Blackjack</div><div class="body"></div></div>`;
+  return row;
+}
+function messageRow(m, i, conv) {
+  if (m.role === "user") {
+    const row = document.createElement("div");
+    row.className = "row user";
+    row.innerHTML = `<div class="bubble"></div>`;
+    row.firstChild.textContent = m.content;
+    return row;
+  }
+  const row = assistantRow();
+  renderAssistant(row.querySelector(".body"), m.content, m.secs, m.sources);
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.innerHTML = `<button data-a="copy"><svg><use href="#i-copy"/></svg>Copier</button><button data-a="pdf"><svg><use href="#i-pdf"/></svg>PDF</button>` +
+    (i === conv.messages.length - 1 ? `<button data-a="redo"><svg><use href="#i-redo"/></svg>Refaire</button>` : "");
+  meta.onclick = e => {
+    const a = e.target.closest("button")?.dataset.a;
+    if (a === "copy") copy(splitThink(m.content).answer);
+    if (a === "pdf") exportPdf(conv.messages[i - 1]?.content || "", m.content);
+    if (a === "redo" && !busy) { conv.messages.pop(); saveConvs(); renderChat(); generate(); }
+  };
+  row.querySelector(".bubble").appendChild(meta);
+  return row;
+}
+function renderChat() {
+  const conv = current();
+  if (!conv || !conv.messages.length) return renderEmpty();
+  $("chat").innerHTML = "";
+  conv.messages.forEach((m, i) => $("chat").appendChild(messageRow(m, i, conv)));
+  scrollDown(true);
+}
+function renderConvs() {
+  $("convList").innerHTML = convs.length ? "" : `<p class="note" style="padding:0 12px">Aucune conversation pour l'instant.</p>`;
+  for (const c of [...convs].sort((a, b) => b.updated - a.updated)) {
+    const el = document.createElement("div");
+    el.className = "conv" + (c.id === currentId ? " active" : "");
+    el.innerHTML = `<span></span><button aria-label="Supprimer">✕</button>`;
+    el.firstChild.textContent = c.title;
+    el.onclick = () => { if (busy) return; switchConv(c.id); closeAll(); };
+    el.lastChild.onclick = e => {
+      e.stopPropagation();
+      if (!confirm(`Supprimer « ${c.title} » ?`)) return;
+      convs = convs.filter(x => x.id !== c.id);
+      if (currentId === c.id) currentId = null;
+      saveConvs(); renderConvs(); renderChat();
+    };
+    $("convList").appendChild(el);
+  }
+}
+function scrollDown(force) {
+  const s = $("scroller");
+  if (force || s.scrollHeight - s.scrollTop - s.clientHeight < 160) s.scrollTop = s.scrollHeight;
+}
+async function copy(text) { try { await navigator.clipboard.writeText(text); toast("Copié ✓"); } catch { toast("Impossible de copier"); } }
+
+// ===================== PDF =====================
+function exportPdf(question, answer) {
+  const date = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  $("printArea").innerHTML = `<div class="p-head"><b>♠ Blackjack — Fiche</b><span>${date}</span></div>` +
+    (question ? `<div class="p-q"><b>Question :</b> ${esc(question)}</div>` : "") +
+    `<div class="content">${rich(splitThink(answer).answer)}</div><div class="p-foot">Généré par Blackjack, ton prof particulier hors ligne.</div>`;
+  toast("Choisis « Enregistrer en PDF » dans la fenêtre d'impression");
+  setTimeout(() => window.print(), 300);
+}
+
+// ===================== MOTEUR IA (WebLLM) =====================
+let engine = null, busy = false, stopRequested = false, hasF16 = false;
+const modelId = key => {
+  const m = MODELS.find(x => x.key === key) || MODELS[0];
+  return `${m.base}-${hasF16 ? "q4f16_1" : "q4f32_1"}-MLC`;
+};
+function setState(text, cls) { $("state").textContent = text; $("dot").className = "dot " + (cls || ""); }
+
+async function checkGPU() {
+  if (!navigator.gpu) return "Ton navigateur ne prend pas en charge WebGPU, nécessaire pour faire tourner l'IA sur le téléphone.\n• Android : utilise Chrome à jour.\n• iPhone : iOS 26 ou plus récent, avec Safari.";
+  const adapter = await navigator.gpu.requestAdapter().catch(() => null);
+  if (!adapter) return "Impossible d'accéder à la puce graphique du téléphone (WebGPU). Mets à jour ton navigateur et ton système.";
+  hasF16 = adapter.features.has("shader-f16");
+  return null;
+}
+
+async function loadEngine(key, onProgress) {
+  const id = modelId(key);
+  if (engine) { await engine.unload().catch(() => {}); engine = null; }
+  engine = await webllm.CreateMLCEngine(id, { initProgressCallback: onProgress });
+  return id;
+}
+
+async function isCached(key) {
+  try { return await webllm.hasModelInCache(modelId(key)); } catch { return false; }
+}
+
+// ===================== CONVERSATION =====================
+function autoGrow() { const t = $("input"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
+$("input").oninput = autoGrow;
+$("input").onkeydown = e => {
+  if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) { e.preventDefault(); send(); }
+};
+$("send").onclick = () => busy ? (stopRequested = true, engine?.interruptGenerate()) : send();
+
+function setBusy(b) {
+  busy = b;
+  $("send").innerHTML = `<svg><use href="#${b ? "i-stop" : "i-send"}"/></svg>`;
+  if (!b) engine ? updateWebPill() : setState("Pas de modèle");
+}
+
+function send(textOverride) {
+  if (busy) return;
+  const text = (textOverride ?? $("input").value).trim();
+  if (!text) return;
+  if (!engine) { toast("Le cerveau de Blackjack n'est pas encore chargé"); return; }
+  let conv = current();
+  if (!conv) {
+    conv = { id: Date.now().toString(36), title: text.slice(0, 48), messages: [], updated: Date.now(), subject: settings.subject };
+    convs.push(conv); currentId = conv.id;
+  }
+  conv.messages.push({ role: "user", content: text });
+  conv.updated = Date.now();
+  if (textOverride === undefined) { $("input").value = ""; autoGrow(); }
+  saveConvs(); renderConvs(); renderChat();
+  generate();
+}
+
+// ===================== VÉRIFICATION EN LIGNE (Wikipédia) =====================
+const STOP = new Set(("le la les un une des de du d l à au aux et ou en est sont que qui quoi quel quelle quels quelles comment pourquoi quand où " +
+  "dans sur pour par avec sans ce cet cette ces mon ma mes ton ta tes son sa ses je tu il elle on nous vous ils elles me te se moi toi lui leur y " +
+  "ai as ont été être avoir fait faire peux peut veux explique expliquer expliquez donne dis cours simplement svp stp merci bonjour salut " +
+  "pas plus très bien est-ce c'est qu'est-ce quoi aide aider résume résumer parle parler raconte moi-même exemple exemples").split(" "));
+const online = () => navigator.onLine && settings.web;
+function keywords(text) {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}\s'-]/gu, " ").split(/[\s']+/)
+    .filter(w => w.length > 2 && !STOP.has(w) && !/-moi$/.test(w)).slice(0, 7).join(" ");
+}
+// Pas de recherche pour un simple calcul ou une phrase trop courte
+function needsLookup(text) {
+  const words = keywords(text).split(" ").filter(Boolean);
+  const mathSymbols = (text.match(/[=+*/^√∫∑<>]|\d\s*[-x×]\s*\d/g) || []).length;
+  return words.length >= 1 && mathSymbols < 2;
+}
+async function wiki(params) {
+  const url = "https://fr.wikipedia.org/w/api.php?format=json&origin=*&" + new URLSearchParams(params);
+  const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+  return r.json();
+}
+async function lookup(text) {
+  const q = keywords(text);
+  if (!q) return [];
+  const s = await wiki({ action: "query", list: "search", srsearch: q, srlimit: 3 });
+  const titles = (s.query?.search || []).map(x => x.title);
+  if (!titles.length) return [];
+  const e = await wiki({ action: "query", prop: "extracts|info", inprop: "url", exintro: 1, explaintext: 1, exlimit: 3, redirects: 1, titles: titles.join("|") });
+  const pages = Object.values(e.query?.pages || {}).filter(p => p.extract);
+  pages.sort((a, b) => titles.indexOf(a.title) - titles.indexOf(b.title));
+  return pages.map(p => ({ title: p.title, url: p.fullurl, text: p.extract.replace(/\s+/g, " ").slice(0, 800) }));
+}
+function updateWebPill() {
+  const net = navigator.onLine;
+  $("webBtn").classList.toggle("on", settings.web && net);
+  $("webBtn").classList.toggle("off", !net);
+  $("webLbl").textContent = !net ? "Hors ligne" : settings.web ? "En ligne" : "Vérif. off";
+  if (!busy && engine) setState(net && settings.web ? "Prêt · vérifie en ligne" : "Prêt · hors ligne", "ok");
+}
+$("webBtn").onclick = () => {
+  if (!navigator.onLine) { toast("Pas de connexion : Blackjack répond avec ce qu'il sait"); return; }
+  settings.web = !settings.web; saveSettings(); updateWebPill();
+  toast(settings.web ? "Blackjack vérifiera sur Wikipédia quand c'est utile" : "Vérification en ligne désactivée");
+};
+addEventListener("online", updateWebPill);
+addEventListener("offline", updateWebPill);
+
+// Garde l'essentiel de l'historique pour tenir dans la mémoire du modèle (4096 jetons)
+function buildMessages(conv, sources = []) {
+  let sys = settings.system;
+  const subj = SUBJECTS.find(s => s.id === conv.subject) || subject();
+  if (subj.rule) sys += `\n\n${subj.rule}`;
+  if (settings.grade) sys += `\n\nClasse de l'élève : ${settings.grade}.`;
+  if (memory.trim()) sys += `\n\nCe que tu sais déjà de l'élève (carnet de suivi) :\n${memory.trim()}`;
+  if (sources.length) {
+    sys += `\n\nExtraits de Wikipédia trouvés pour cette question. Sers-t'en pour VÉRIFIER tes informations (dates, noms, définitions) ; ` +
+      `en cas de désaccord, fais confiance à ces extraits. Cite-les avec [1], [2]… quand tu les utilises. S'ils ne concernent pas la question, ignore-les.\n` +
+      sources.map((s, i) => `[${i + 1}] ${s.title} : ${s.text}`).join("\n");
+  }
+  const msgs = [];
+  let budget = sources.length ? 4000 : 6000;   // caractères pour l'historique (les extraits prennent de la place)
+  for (let i = conv.messages.length - 1; i >= 0; i--) {
+    const m = conv.messages[i];
+    const content = m.role === "assistant" ? splitThink(m.content).answer : m.content;
+    if (budget - content.length < 0 && msgs.length) break;
+    budget -= content.length;
+    msgs.unshift({ role: m.role, content });
+  }
+  return [{ role: "system", content: sys }, ...msgs];
+}
+
+async function generate() {
+  const conv = current();
+  const row = assistantRow();
+  const body = row.querySelector(".body");
+  renderAssistant(body, "");
+  $("chat").appendChild(row);
+  scrollDown(true);
+  setBusy(true);
+  stopRequested = false;
+  setState(settings.think ? "Réfléchit…" : "Écrit…", "busy");
+  const t0 = Date.now();
+  let text = "", frame = 0, sources = [];
+  const paint = () => { frame = 0; renderAssistant(body, text, Math.round((Date.now() - t0) / 1000), sources); scrollDown(); };
+  const timer = setInterval(() => { if (splitThink(text).thinking || !text) paint(); }, 1000);
+  try {
+    await memoryJob;   // attend une éventuelle mise à jour du carnet
+    const question = conv.messages[conv.messages.length - 1]?.content || "";
+    if (online() && needsLookup(question)) {
+      setState("Vérifie sur Wikipédia…", "busy");
+      try { sources = await lookup(question); } catch { sources = []; }   // pas de réseau : on fait sans
+      setState(settings.think ? "Réfléchit…" : "Écrit…", "busy");
+    }
+    const stream = await engine.chat.completions.create({
+      messages: buildMessages(conv, sources), stream: true,
+      temperature: settings.think ? 0.6 : 0.7, top_p: settings.think ? 0.95 : 0.8,
+      max_tokens: settings.think ? 3000 : 1500,
+      extra_body: { enable_thinking: settings.think },
+    });
+    for await (const chunk of stream) {
+      text += chunk.choices[0]?.delta?.content || "";
+      if (!frame) frame = requestAnimationFrame(paint);
+    }
+  } catch (e) {
+    if (!stopRequested) { body.innerHTML = `<div class="content error">Erreur : ${esc(e.message || String(e))}</div>`; }
+  }
+  clearInterval(timer);
+  cancelAnimationFrame(frame);
+  const secs = Math.round((Date.now() - t0) / 1000);
+  text = text.replace(/<think>\s*<\/think>\s*/g, "");
+  if (text.trim()) {
+    conv.messages.push({ role: "assistant", content: text, secs: splitThink(text).think ? secs : undefined,
+      sources: sources.length ? sources.map(({ title, url }) => ({ title, url })) : undefined });
+    conv.updated = Date.now();
+    saveConvs();
+  }
+  setBusy(false);
+  renderChat();
+  // Toutes les 3 questions, Blackjack complète son carnet
+  const seen = memMeta[conv.id] || 0;
+  if (conv.messages.length - seen >= 6) scheduleMemory(conv);
+}
+
+// ===================== CARNET DE SUIVI (mémoire) =====================
+let memoryJob = Promise.resolve();
+function transcript(conv, from) {
+  return conv.messages.slice(from).map(m => `${m.role === "user" ? "ÉLÈVE" : "BLACKJACK"} : ${(m.role === "assistant" ? splitThink(m.content).answer : m.content).slice(0, 700)}`).join("\n").slice(-4500);
+}
+function scheduleMemory(conv) {
+  if (!engine || !conv) return memoryJob;
+  const from = memMeta[conv.id] || 0;
+  if (conv.messages.length <= from) return memoryJob;
+  memoryJob = memoryJob.then(async () => {
+    setState("Met à jour son carnet…", "busy");
+    try {
+      const r = await engine.chat.completions.create({
+        messages: [
+          { role: "system", content: "Tu tiens le carnet de suivi scolaire d'un élève. Tu réponds uniquement par une liste à puces en français, sans introduction." },
+          { role: "user", content: `Carnet actuel :\n${memory || "(vide)"}\n\nClasse : ${settings.grade || "inconnue"}\n\nDernier échange :\n${transcript(conv, from)}\n\nRéécris le carnet complet en 12 puces maximum, courtes et utiles pour mieux aider l'élève : matières et chapitres travaillés, points maîtrisés, difficultés et erreurs fréquentes, progrès, façon d'expliquer qui lui convient, objectifs. Garde les anciennes informations encore vraies.` },
+        ],
+        temperature: 0.3, max_tokens: 500, extra_body: { enable_thinking: false },
+      });
+      const out = (r.choices[0]?.message?.content || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+      const bullets = out.split("\n").map(l => l.trim()).filter(l => /^[-*•]/.test(l)).map(l => "• " + l.replace(/^[-*•]\s*/, "")).slice(0, 12);
+      if (bullets.length) {
+        memory = bullets.join("\n");
+        store.set("memory", memory);
+        $("memory").value = memory;
+        memMeta[conv.id] = conv.messages.length;
+        store.set("memMeta", memMeta);
+      }
+    } catch { /* on réessaiera plus tard */ }
+    if (!busy) updateWebPill();
+  });
+  return memoryJob;
+}
+function review() {
+  closeAll();
+  if (!engine) { toast("Le cerveau de Blackjack n'est pas encore chargé"); return; }
+  currentId = null;
+  send("Fais le bilan de mes progrès à partir de ton carnet de suivi : ce que je maîtrise, ce qui me pose problème, et propose-moi un petit programme pour progresser cette semaine. Dis-moi aussi ce qu'on pourrait améliorer ensemble dans ta façon de m'aider.");
+}
+function switchConv(id) {
+  const prev = current();
+  if (prev && prev.id !== id) scheduleMemory(prev);
+  currentId = id;
+  const conv = current();
+  if (conv?.subject) { settings.subject = conv.subject; saveSettings(); }
+  saveConvs(); renderConvs(); renderChat(); renderSubjects();
+}
+
+// ===================== PANNEAUX =====================
+function openPanel(id) { closeAll(); $(id).classList.add("on"); $("scrim").classList.add("on"); }
+function closeAll() { for (const id of ["drawer", "memSheet", "setSheet"]) $(id).classList.remove("on"); $("scrim").classList.remove("on"); }
+$("menuBtn").onclick = () => { renderConvs(); openPanel("drawer"); };
+$("memBtn").onclick = () => { $("memory").value = memory; $("grade").value = settings.grade; openPanel("memSheet"); };
+$("setBtn").onclick = () => { renderModelOptions($("modelsSet"), settings.model, switchModel); showStorage(); openPanel("setSheet"); };
+$("scrim").onclick = closeAll;
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = closeAll);
+$("newChat").onclick = () => { if (busy) return; switchConv(null); closeAll(); $("input").focus(); };
+
+$("memory").oninput = e => { memory = e.target.value; store.set("memory", memory); };
+$("grade").oninput = e => { settings.grade = e.target.value.trim(); saveSettings(); };
+$("reviewBtn").onclick = review;
+$("memUpdateBtn").onclick = async () => {
+  const conv = current();
+  if (!conv) { toast("Ouvre une conversation d'abord"); return; }
+  memMeta[conv.id] = 0;
+  toast("Blackjack relit votre conversation…");
+  await scheduleMemory(conv);
+  toast("Carnet mis à jour ✓");
+};
+$("memClearBtn").onclick = () => {
+  if (!confirm("Effacer tout ce que Blackjack a retenu ?")) return;
+  memory = ""; memMeta = {}; store.set("memory", ""); store.set("memMeta", {}); $("memory").value = "";
+};
+
+$("thinkBtn").onclick = () => {
+  settings.think = !settings.think; saveSettings(); $("thinkBtn").classList.toggle("on", settings.think);
+  toast(settings.think ? "Réflexion activée : plus lent, plus juste en maths" : "Réflexion désactivée : réponses plus rapides");
+};
+$("thinkBtn").classList.toggle("on", settings.think);
+$("subjectSel").innerHTML = SUBJECTS.map(s => `<option value="${s.id}">${s.icon} ${s.name}</option>`).join("");
+$("subjectSel").onchange = e => setSubject(e.target.value);
+
+$("sysPrompt").value = settings.system;
+$("sysPrompt").oninput = e => { settings.system = e.target.value; saveSettings(); };
+$("resetPrompt").onclick = () => { settings.system = DEFAULT_SYSTEM; $("sysPrompt").value = DEFAULT_SYSTEM; saveSettings(); toast("Rétabli ✓"); };
+
+const THEMES = [
+  { id: "casino", name: "Casino", bg: "linear-gradient(135deg,#10261d,#0b1a14)", fg: "#d4af37", meta: "#0b1a14" },
+  { id: "onyx", name: "Onyx", bg: "linear-gradient(135deg,#1a1a1c,#0a0a0b)", fg: "#e0263f", meta: "#0a0a0b" },
+  { id: "minuit", name: "Minuit", bg: "linear-gradient(135deg,#1d2252,#0b0d1f)", fg: "#8b6cff", meta: "#0b0d1f" },
+  { id: "ivoire", name: "Ivoire", bg: "linear-gradient(135deg,#ffffff,#efe9de)", fg: "#a8192e", meta: "#f7f4ee" },
+];
+for (const t of THEMES) {
+  const b = document.createElement("button");
+  b.className = "theme-opt"; b.dataset.v = t.id;
+  b.innerHTML = `<div class="sw" style="background:${t.bg};color:${t.fg}">♠</div><div>${t.name}</div>`;
+  b.onclick = () => { settings.theme = t.id; saveSettings(); applyTheme(); };
+  $("themes").appendChild(b);
+}
+function applyTheme() {
+  const t = THEMES.find(x => x.id === settings.theme) || THEMES[0];
+  document.documentElement.dataset.theme = t.id;
+  document.querySelector('meta[name="theme-color"]').content = t.meta;
+  document.querySelectorAll(".theme-opt").forEach(b => b.classList.toggle("on", b.dataset.v === t.id));
+}
+applyTheme();
+
+async function renderModelOptions(box, selected, onPick) {
+  box.innerHTML = "";
+  for (const m of MODELS) {
+    const b = document.createElement("button");
+    b.className = "model-opt" + (m.key === selected ? " on" : "");
+    b.innerHTML = `<span class="ic">${m.icon}</span><span><b>${m.name}</b><small>${m.desc}</small></span><span class="tag">${m.size}</span>`;
+    b.onclick = () => onPick(m.key, b);
+    box.appendChild(b);
+    isCached(m.key).then(ok => { if (ok) b.querySelector(".tag").textContent = "✓ installé"; });
+  }
+}
+async function showStorage() {
+  try {
+    const { usage, quota } = await navigator.storage.estimate();
+    $("storageNote").textContent = `Espace utilisé par Blackjack : ${(usage / 1e9).toFixed(2)} Go (sur ${(quota / 1e9).toFixed(0)} Go disponibles pour le navigateur).`;
+  } catch { $("storageNote").textContent = ""; }
+}
+async function switchModel(key) {
+  if (busy || key === settings.model) return;
+  if (!(await isCached(key)) && !confirm(`Télécharger le cerveau « ${MODELS.find(m => m.key === key).name} » (${MODELS.find(m => m.key === key).size}) ? Il faut une connexion internet.`)) return;
+  closeAll();
+  setBusy(true);
+  try {
+    await loadEngine(key, r => setState(`Chargement ${Math.round(r.progress * 100)} %`, "busy"));
+    settings.model = key; saveSettings();
+    toast("Nouveau cerveau prêt ✓");
+  } catch (e) {
+    toast("Échec : " + (e.message || e));
+    if (settings.model) await loadEngine(settings.model, () => {}).catch(() => {});
+  }
+  setBusy(false);
+}
+$("wipeModels").onclick = async () => {
+  if (!confirm("Supprimer tous les modèles téléchargés ? Il faudra internet pour les retélécharger.")) return;
+  if (engine) { await engine.unload().catch(() => {}); engine = null; }
+  for (const m of MODELS) for (const q of ["q4f16_1", "q4f32_1"]) {
+    try { await webllm.deleteModelAllInfoInCache(`${m.base}-${q}-MLC`); } catch {}
+  }
+  settings.model = null; saveSettings();
+  location.reload();
+};
+
+// ===================== DÉMARRAGE =====================
+async function startup() {
+  renderChat();
+  renderSubjects();
+  updateWebPill();
+  try { await navigator.storage?.persist?.(); } catch {}   // évite que le téléphone efface le modèle
+  const gpuError = await checkGPU();
+  if (gpuError) {
+    $("setup").classList.add("on");
+    $("installBtn").disabled = true;
+    $("setupWarn").textContent = gpuError;
+    $("setupWarn").classList.add("on");
+    setState("WebGPU indisponible");
+    return;
+  }
+  if (settings.model && await isCached(settings.model)) {
+    setState("Réveil de Blackjack…", "busy");
+    try {
+      await loadEngine(settings.model, r => setState(`Réveil ${Math.round(r.progress * 100)} %`, "busy"));
+      setBusy(false);
+      return;
+    } catch (e) { toast("Erreur au chargement : " + (e.message || e)); }
+  }
+  showSetup();
+}
+function showSetup() {
+  $("setup").classList.add("on");
+  let pick = settings.model || "leger";
+  const draw = () => renderModelOptions($("modelsSetup"), pick, k => { pick = k; draw(); });
+  draw();
+  $("installBtn").onclick = async () => {
+    $("installBtn").disabled = true;
+    $("dlBox").style.display = "block";
+    $("setupWarn").classList.remove("on");
+    try {
+      await loadEngine(pick, r => {
+        $("bar").style.width = Math.round(r.progress * 100) + "%";
+        $("setupStatus").textContent = r.text.replace(/Fetching param cache/i, "Téléchargement").replace(/Loading model from cache/i, "Chargement");
+      });
+      settings.model = pick; saveSettings();
+      $("setup").classList.remove("on");
+      setBusy(false);
+      toast("Blackjack est prêt, même hors ligne ✓");
+    } catch (e) {
+      $("setupWarn").textContent = "Le téléchargement a échoué : " + (e.message || e) + "\nVérifie ta connexion, ou choisis un cerveau plus petit.";
+      $("setupWarn").classList.add("on");
+      $("installBtn").disabled = false;
+    }
+  };
+}
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+addEventListener("pagehide", () => { const c = current(); if (c) scheduleMemory(c); });
+window.addEventListener("load", () => { if (current()) renderChat(); });  // re-rend une fois KaTeX chargé
+startup();
+</script>
+</body>
+</html>

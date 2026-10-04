@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="30%" r="80%"><stop offset="0" stop-color="#1c4434"/><stop offset="1" stop-color="#08140f"/></radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3d77a"/><stop offset="1" stop-color="#c79a26"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect x="146" y="96" width="220" height="320" rx="26" fill="#0d0d0f" stroke="#d4af37" stroke-opacity=".5" stroke-width="4"/>
+  <g transform="translate(256 262) scale(6.2) translate(-12 -12)">
+    <path fill="url(#gold)" d="M12 1.5C9.2 5.6 3.5 8.6 3.5 13.2a4.3 4.3 0 0 0 7.1 3.3L9 22.5h6l-1.6-6a4.3 4.3 0 0 0 7.1-3.3c0-4.6-5.7-7.6-8.5-11.7z"/>
+  </g>
+  <text x="172" y="146" font-family="Georgia, serif" font-weight="700" font-size="40" fill="#d4af37">A</text>
+  <text x="340" y="366" font-family="Georgia, serif" font-weight="700" font-size="40" fill="#d4af37" transform="rotate(180 340 352)">A</text>
+</svg>
