@@ -220,6 +220,10 @@
   #setupStatus { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 40px; overflow-wrap: anywhere; }
   .warn { border: 1px solid var(--danger); color: var(--danger); border-radius: 12px; padding: 12px; font-size: 14px; display: none; margin-top: 12px; }
   .warn.on { display: block; }
+  .info { display: none; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-radius: 12px; padding: 12px; font-size: 14px; line-height: 1.5; margin-bottom: 6px; }
+  .info.on { display: block; }
+  .info small { color: var(--muted); }
 
   #toast { position: fixed; bottom: calc(110px + env(safe-area-inset-bottom)); left: 50%; transform: translate(-50%, 10px); z-index: 50;
     background: var(--solid); border: 1px solid var(--border); padding: 9px 16px; border-radius: 12px; font-size: 14px;
@@ -339,6 +343,7 @@
     <div class="hero" style="margin-top:4vh"><svg><use href="#spade"/></svg></div>
     <h1>Bienvenue sur <span>Blackjack</span></h1>
     <p>Ton prof particulier, directement dans ton téléphone. Après ce téléchargement unique, il fonctionne <b>sans internet</b>, même en mode avion.</p>
+    <div class="info" id="cpuNote"></div>
     <div class="label">Choisis son cerveau</div>
     <div class="models" id="modelsSetup"></div>
     <div class="stack" style="margin-top:18px">
@@ -357,14 +362,29 @@
 <div id="toast"></div>
 
 <script type="module">
-import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm";
+// Deux moteurs, chargés seulement si besoin :
+//  - WebLLM : utilise la puce graphique (WebGPU), rapide
+//  - wllama : utilise le processeur, plus lent mais marche sur tous les téléphones récents
+const WEBLLM_URL = "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm";
+const WLLAMA_URL = "https://cdn.jsdelivr.net/npm/@wllama/wllama@3.8.1/esm/index.js";
+const WLLAMA_WASM = "https://cdn.jsdelivr.net/npm/@wllama/wllama@3.8.1/esm/wasm/wllama.wasm";
+const loadWebLLM = () => import(WEBLLM_URL);
+const loadWllama = () => import(WLLAMA_URL);
 
 // ===================== CONFIGURATION =====================
-const MODELS = [
+const GPU_MODELS = [
   { key: "leger", icon: "♣", name: "Léger", desc: "Rapide, marche sur la plupart des téléphones récents.", size: "≈ 1,3 Go", base: "Qwen3.5-2B" },
   { key: "fort",  icon: "♠", name: "Fort",  desc: "Meilleur en maths, pour téléphone puissant (8 Go de RAM ou plus).", size: "≈ 2,5 Go", base: "Qwen3.5-4B" },
   { key: "mini",  icon: "♦", name: "Mini",  desc: "Pour les téléphones plus anciens. Moins fiable en calcul.", size: "≈ 0,6 Go", base: "Qwen3.5-0.8B" },
 ];
+const CPU_MODELS = [
+  { key: "cpu-leger", icon: "♣", name: "Léger", desc: "Le plus intelligent sur processeur. Écrit à peu près à la vitesse de lecture.", size: "≈ 1,1 Go",
+    url: "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf" },
+  { key: "cpu-mini",  icon: "♦", name: "Mini",  desc: "Plus rapide, mais plus simple. Moins fiable en calcul.", size: "≈ 0,4 Go",
+    url: "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf" },
+];
+let mode = "gpu";                                   // "gpu" ou "cpu", décidé au démarrage
+const MODELS_FOR = () => mode === "gpu" ? GPU_MODELS : CPU_MODELS;
 const OLD_SYSTEMS = [`Tu es Blackjack, un professeur particulier bienveillant et exigeant, spécialisé en mathématiques et dans les matières scolaires. Tu réponds toujours en français.
 Règles :
 - Explique étape par étape, avec des phrases simples, puis donne le résultat final clairement (en gras).
@@ -621,31 +641,68 @@ function exportPdf(question, answer) {
   setTimeout(() => window.print(), 300);
 }
 
-// ===================== MOTEUR IA (WebLLM) =====================
+// ===================== MOTEUR IA =====================
 let engine = null, busy = false, stopRequested = false, hasF16 = false;
 const modelId = key => {
-  const m = MODELS.find(x => x.key === key) || MODELS[0];
+  const m = GPU_MODELS.find(x => x.key === key) || GPU_MODELS[0];
   return `${m.base}-${hasF16 ? "q4f16_1" : "q4f32_1"}-MLC`;
 };
+const cpuModel = key => CPU_MODELS.find(x => x.key === key) || CPU_MODELS[0];
 function setState(text, cls) { $("state").textContent = text; $("dot").className = "dot " + (cls || ""); }
 
+// Renvoie true si la puce graphique est utilisable (WebGPU)
 async function checkGPU() {
-  if (!navigator.gpu) return "Ton navigateur ne prend pas en charge WebGPU, nécessaire pour faire tourner l'IA sur le téléphone.\n• Android : utilise Chrome à jour.\n• iPhone : iOS 26 ou plus récent, avec Safari.";
+  if (!navigator.gpu) return false;
   const adapter = await navigator.gpu.requestAdapter().catch(() => null);
-  if (!adapter) return "Impossible d'accéder à la puce graphique du téléphone (WebGPU). Mets à jour ton navigateur et ton système.";
+  if (!adapter) return false;
   hasF16 = adapter.features.has("shader-f16");
-  return null;
+  return true;
+}
+
+const newWllama = async () => {
+  const { Wllama } = await loadWllama();
+  return new Wllama({ default: WLLAMA_WASM }, { allowOffline: true, logger: { debug() {}, log() {}, warn: console.warn, error: console.error } });
+};
+
+// Le moteur processeur (wllama) imite l'interface de WebLLM, pour que le reste de l'appli n'y voie aucune différence
+function cpuEngine(w) {
+  let ctrl = null;
+  return {
+    chat: { completions: { create: req => {
+      ctrl = new AbortController();
+      const { extra_body, ...rest } = req;
+      return w.createChatCompletion({ ...rest, chat_template_kwargs: { enable_thinking: !!extra_body?.enable_thinking }, abortSignal: ctrl.signal });
+    } } },
+    interruptGenerate() { ctrl?.abort(); },
+    unload: () => w.exit(),
+  };
 }
 
 async function loadEngine(key, onProgress) {
-  const id = modelId(key);
   if (engine) { await engine.unload().catch(() => {}); engine = null; }
-  engine = await webllm.CreateMLCEngine(id, { initProgressCallback: onProgress });
-  return id;
+  if (mode === "gpu") {
+    const webllm = await loadWebLLM();
+    engine = await webllm.CreateMLCEngine(modelId(key), { initProgressCallback: onProgress });
+    return;
+  }
+  const m = cpuModel(key);
+  const w = await newWllama();
+  await w.loadModelFromUrl(m.url, {
+    n_ctx: 4096, n_gpu_layers: 0, jinja: true, reasoning_format: "none",
+    progressCallback: ({ loaded, total }) => onProgress({
+      progress: total ? loaded / total : 0,
+      text: `Téléchargement : ${Math.round(loaded / 1e6)} / ${Math.round(total / 1e6)} Mo`,
+    }),
+  });
+  engine = cpuEngine(w);
 }
 
 async function isCached(key) {
-  try { return await webllm.hasModelInCache(modelId(key)); } catch { return false; }
+  try {
+    if (mode === "gpu") return await (await loadWebLLM()).hasModelInCache(modelId(key));
+    const w = await newWllama();
+    return !!(await w.cacheManager.open(cpuModel(key).url));
+  } catch { return false; }
 }
 
 // ===================== CONVERSATION =====================
@@ -911,7 +968,7 @@ applyTheme();
 
 async function renderModelOptions(box, selected, onPick) {
   box.innerHTML = "";
-  for (const m of MODELS) {
+  for (const m of MODELS_FOR()) {
     const b = document.createElement("button");
     b.className = "model-opt" + (m.key === selected ? " on" : "");
     b.innerHTML = `<span class="ic">${m.icon}</span><span><b>${m.name}</b><small>${m.desc}</small></span><span class="tag">${m.size}</span>`;
@@ -928,7 +985,8 @@ async function showStorage() {
 }
 async function switchModel(key) {
   if (busy || key === settings.model) return;
-  if (!(await isCached(key)) && !confirm(`Télécharger le cerveau « ${MODELS.find(m => m.key === key).name} » (${MODELS.find(m => m.key === key).size}) ? Il faut une connexion internet.`)) return;
+  const m = MODELS_FOR().find(x => x.key === key);
+  if (!(await isCached(key)) && !confirm(`Télécharger le cerveau « ${m.name} » (${m.size}) ? Il faut une connexion internet.`)) return;
   closeAll();
   setBusy(true);
   try {
@@ -944,8 +1002,13 @@ async function switchModel(key) {
 $("wipeModels").onclick = async () => {
   if (!confirm("Supprimer tous les modèles téléchargés ? Il faudra internet pour les retélécharger.")) return;
   if (engine) { await engine.unload().catch(() => {}); engine = null; }
-  for (const m of MODELS) for (const q of ["q4f16_1", "q4f32_1"]) {
-    try { await webllm.deleteModelAllInfoInCache(`${m.base}-${q}-MLC`); } catch {}
+  if (mode === "gpu") {
+    const webllm = await loadWebLLM();
+    for (const m of GPU_MODELS) for (const q of ["q4f16_1", "q4f32_1"]) {
+      try { await webllm.deleteModelAllInfoInCache(`${m.base}-${q}-MLC`); } catch {}
+    }
+  } else {
+    try { await (await newWllama()).cacheManager.clear(); } catch {}
   }
   settings.model = null; saveSettings();
   location.reload();
@@ -957,16 +1020,14 @@ async function startup() {
   renderSubjects();
   updateWebPill();
   try { await navigator.storage?.persist?.(); } catch {}   // évite que le téléphone efface le modèle
-  const gpuError = await checkGPU();
-  if (gpuError) {
-    $("setup").classList.add("on");
-    $("installBtn").disabled = true;
-    $("setupWarn").textContent = gpuError;
-    $("setupWarn").classList.add("on");
-    setState("WebGPU indisponible");
-    return;
+  const forceCpu = new URLSearchParams(location.search).has("cpu");   // …/blackjack/?cpu force le mode processeur
+  mode = (!forceCpu && await checkGPU()) ? "gpu" : "cpu";
+  if (mode === "cpu") {
+    if (!crossOriginIsolated && await needsIsolationReload()) return;   // active les 8 cœurs du processeur
+    if (settings.think === undefined || !settings.cpuSeen) { settings.think = false; settings.cpuSeen = true; saveSettings(); $("thinkBtn").classList.remove("on"); }
   }
-  if (settings.model && await isCached(settings.model)) {
+  const valid = MODELS_FOR().some(m => m.key === settings.model);
+  if (valid && await isCached(settings.model)) {
     setState("Réveil de Blackjack…", "busy");
     try {
       await loadEngine(settings.model, r => setState(`Réveil ${Math.round(r.progress * 100)} %`, "busy"));
@@ -978,7 +1039,13 @@ async function startup() {
 }
 function showSetup() {
   $("setup").classList.add("on");
-  let pick = settings.model || "leger";
+  let pick = MODELS_FOR().some(m => m.key === settings.model) ? settings.model : MODELS_FOR()[0].key;
+  if (mode === "cpu") {
+    $("cpuNote").classList.add("on");
+    $("cpuNote").innerHTML = `<b>Mode processeur.</b> Chrome n'autorise pas encore la puce graphique de ton téléphone, alors Blackjack utilisera son processeur. ` +
+      `Ça marche, mais les réponses sont plus lentes et les cerveaux plus petits.` +
+      (crossOriginIsolated ? "" : `<br><small>(Mode 1 cœur : relance l'appli pour qu'il utilise tous les cœurs.)</small>`);
+  }
   const draw = () => renderModelOptions($("modelsSetup"), pick, k => { pick = k; draw(); });
   draw();
   $("installBtn").onclick = async () => {
@@ -1002,6 +1069,25 @@ function showSetup() {
   };
 }
 
+// Le mode processeur a besoin que la page soit « isolée » pour utiliser plusieurs cœurs.
+// GitHub Pages ne le permet pas directement : c'est le service worker qui ajoute les en-têtes nécessaires,
+// il faut donc recharger la page une fois qu'il est actif.
+async function needsIsolationReload() {
+  if (!("serviceWorker" in navigator)) return false;
+  try {
+    if (sessionStorage.getItem("bj_isoReload")) return false;   // une seule tentative par session
+    sessionStorage.setItem("bj_isoReload", "1");
+  } catch { return false; }
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const ready = await Promise.race([navigator.serviceWorker.ready.then(() => true), wait(5000).then(() => false)]);
+  if (!ready) return false;                                    // service worker indisponible : on reste en 1 cœur
+  if (!navigator.serviceWorker.controller) {
+    await new Promise(r => { navigator.serviceWorker.addEventListener("controllerchange", r, { once: true }); setTimeout(r, 3000); });
+  }
+  if (!navigator.serviceWorker.controller) return false;
+  location.reload();
+  return true;
+}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 addEventListener("pagehide", () => { const c = current(); if (c) scheduleMemory(c); });
 window.addEventListener("load", () => { if (current()) renderChat(); });  // re-rend une fois KaTeX chargé

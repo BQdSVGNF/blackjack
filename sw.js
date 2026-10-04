@@ -1,6 +1,9 @@
-// Service worker de Blackjack École : garde l'application disponible hors ligne.
-// (Les modèles d'IA sont mis en cache séparément par WebLLM.)
-const CACHE = "blackjack-ecole-v1";
+// Service worker de Blackjack École :
+//  1. garde l'application disponible hors ligne ;
+//  2. ajoute les en-têtes d'« isolation » qui permettent au mode processeur d'utiliser tous les cœurs
+//     (GitHub Pages ne permet pas de les configurer autrement).
+// (Les modèles d'IA sont mis en cache séparément par WebLLM / wllama.)
+const CACHE = "blackjack-ecole-v2";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -15,6 +18,15 @@ self.addEventListener("activate", e => {
   );
 });
 
+// Ajoute COOP/COEP aux pages de l'application
+function isolate(res) {
+  if (!res || res.type === "opaque" || res.status === 0) return res;
+  const headers = new Headers(res.headers);
+  headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  headers.set("Cross-Origin-Embedder-Policy", "credentialless");
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
 self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
@@ -22,15 +34,17 @@ self.addEventListener("fetch", e => {
 
   // Fichiers de l'application : réseau d'abord (pour les mises à jour), sinon la copie locale
   if (url.origin === location.origin) {
+    const isPage = req.mode === "navigate" || req.destination === "document";
     e.respondWith(
       fetch(req)
-        .then(res => { if (res.ok) caches.open(CACHE).then(c => c.put(req, res.clone())); return res; })
+        .then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; })
         .catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match("index.html")))
+        .then(res => isPage ? isolate(res) : res)
     );
     return;
   }
 
-  // Bibliothèques (moteur IA, formules) : copie locale d'abord, elles ne changent pas
+  // Bibliothèques (moteurs IA, formules) : copie locale d'abord, elles ne changent pas
   if (url.hostname === "cdn.jsdelivr.net") {
     e.respondWith(
       caches.match(req).then(hit => hit || fetch(req).then(res => {
