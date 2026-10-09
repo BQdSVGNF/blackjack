@@ -1,0 +1,294 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crazy Crash</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=IBM+Plex+Mono:wght@500;600&family=Outfit:wght@400;600&display=swap">
+<style>
+  /* Layout: a big live graph on the left, bet panel and history on the right; stacks on phones. Dark arcade look, single theme. */
+  :root {
+    --ink: #130a1f;       /* page ground */
+    --panel: #1d1230;     /* panels */
+    --line: #3a2858;      /* hairlines */
+    --text: #f4eefc;
+    --muted: #a595c4;
+    --hot: #ff3d5a;       /* crash / danger */
+    --gold: #ffc83d;      /* multiplier / accent */
+    --mint: #3df0c8;      /* cash-out / win */
+    --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+    --body: "Outfit", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body { margin: 0; background: var(--ink); color: var(--text); font: 16px/1.5 var(--body);
+    padding-inline: 16px; padding-block: 16px 28px; }
+  .app { max-width: 1040px; margin: 0 auto; display: grid; gap: 16px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font: 800 clamp(22px, 5vw, 32px)/1 var(--display); letter-spacing: -.02em; text-wrap: balance; }
+  h1 span { color: var(--hot); }
+  .wallet { font: 600 15px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .wallet b { color: var(--gold); font-size: 20px; margin-left: 6px; }
+
+  .main { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+  @media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+  .stage { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; min-height: 320px; aspect-ratio: 16 / 10; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .readout { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; gap: 4px; }
+  #mult { font: 800 clamp(48px, 11vw, 96px)/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--gold); }
+  #sub { font: 600 14px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .stage.crashed #mult { color: var(--hot); }
+  .stage.crashed { animation: shake .45s; }
+  @keyframes shake { 20% { transform: translate(-6px, 3px); } 40% { transform: translate(5px, -4px); } 60% { transform: translate(-4px, -2px); } 80% { transform: translate(3px, 3px); } }
+
+  .side { display: grid; gap: 16px; align-content: start; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+  label { font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; }
+  .field { width: 100%; background: var(--ink); border: 1px solid var(--line); border-radius: 10px; color: var(--text); padding: 11px 12px; font: 600 18px var(--mono); font-variant-numeric: tabular-nums; }
+  .field:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .quick button { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 7px 0; font: 600 13px var(--mono); cursor: pointer; }
+  .quick button:hover { border-color: var(--gold); color: var(--text); }
+  #go { width: 100%; border: 0; border-radius: 12px; padding: 16px; font: 800 17px var(--display); cursor: pointer; background: var(--gold); color: #2a1a00; transition: transform .08s; }
+  #go:active:not(:disabled) { transform: scale(.98); }
+  #go.cash { background: var(--mint); color: #012a21; }
+  #go.cancel { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  #go:disabled { opacity: .45; cursor: not-allowed; }
+  #result { min-height: 24px; font: 600 15px var(--mono); text-align: center; font-variant-numeric: tabular-nums; }
+  #result.win { color: var(--mint); } #result.lose { color: var(--hot); }
+
+  .hist { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; }
+  .chip { font: 600 13px var(--mono); padding: 4px 9px; border-radius: 999px; border: 1px solid currentColor; font-variant-numeric: tabular-nums; }
+  .chip.lo { color: var(--hot); } .chip.mid { color: var(--gold); } .chip.hi { color: var(--mint); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+  .stats div { font: 600 18px var(--mono); font-variant-numeric: tabular-nums; }
+  .stats small { display: block; font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  #reset { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 4px 10px; cursor: pointer; font: 500 12px var(--mono); }
+  @media (prefers-reduced-motion: reduce) { .stage.crashed { animation: none; } #go { transition: none; } }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Crazy <span>Crash</span></h1>
+    <div class="wallet">Solde <b id="bal">1000.00</b> pts</div>
+  </header>
+
+  <div class="main">
+    <div class="stage" id="stage">
+      <canvas id="cv"></canvas>
+      <div class="readout"><div id="mult">1.00x</div><div id="sub">Prochain départ</div></div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <div>
+          <label for="stake">Mise</label>
+          <input class="field" id="stake" type="number" inputmode="decimal" min="1" step="1" value="50">
+          <div class="quick" style="margin-top:8px">
+            <button type="button" data-q="min">Min</button>
+            <button type="button" data-q="half">½</button>
+            <button type="button" data-q="dbl">×2</button>
+            <button type="button" data-q="max">Max</button>
+          </div>
+        </div>
+        <div>
+          <label for="auto">Encaisser auto à (x)</label>
+          <input class="field" id="auto" type="number" inputmode="decimal" min="1.01" step="0.1" placeholder="désactivé">
+        </div>
+        <button id="go" type="button">Parier</button>
+        <div id="result" aria-live="polite"></div>
+        <div class="foot"><span>Barre d'espace : parier / encaisser</span></div>
+      </div>
+
+      <div class="card">
+        <label style="margin:0">Derniers crashs</label>
+        <div class="hist" id="hist"></div>
+        <div class="stats">
+          <div><span id="sRounds">0</span><small>Tours</small></div>
+          <div><span id="sBest">1.00x</span><small>Record</small></div>
+          <div><span id="sNet">0</span><small>Gain net</small></div>
+        </div>
+        <div class="foot"><span>Jeu fictif, points virtuels.</span><button id="reset" type="button">Remettre à 1000</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const RATE = 0.12;            // multiplier = e^(RATE * seconds)
+  const WAIT_MS = 5000, CRASH_MS = 3500;
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+  let balance = store.get("cc_bal", 1000);
+  let stats = store.get("cc_stats", { rounds: 0, best: 1, net: 0 });
+  let history = store.get("cc_hist", []);
+  const fmt = n => n.toFixed(2);
+  const save = () => { store.set("cc_bal", balance); store.set("cc_stats", stats); store.set("cc_hist", history); };
+
+  let phase = "wait", waitEnd = performance.now() + WAIT_MS, t0 = 0, crashAt = 2, m = 1, crashEnd = 0;
+  let bet = null;               // { stake, auto, done }
+
+  const genCrash = () => {
+    const r = Math.random();
+    return Math.min(1000, Math.max(1, Math.floor(100 * 0.99 / (1 - r)) / 100));   // 1% house edge
+  };
+
+  // ---------- UI ----------
+  const stage = $("stage"), cv = $("cv"), ctx = cv.getContext("2d");
+  const go = $("go"), resultEl = $("result");
+  function renderWallet() { $("bal").textContent = fmt(balance); }
+  function renderStats() {
+    $("sRounds").textContent = stats.rounds;
+    $("sBest").textContent = fmt(stats.best) + "x";
+    $("sNet").textContent = (stats.net > 0 ? "+" : "") + Math.round(stats.net);
+    $("sNet").style.color = stats.net > 0 ? "var(--mint)" : stats.net < 0 ? "var(--hot)" : "";
+  }
+  function renderHist() {
+    $("hist").innerHTML = history.map(v => `<span class="chip ${v < 2 ? "lo" : v < 10 ? "mid" : "hi"}">${fmt(v)}x</span>`).join("")
+      || '<span style="color:var(--muted);font-size:13px">Aucun tour joué pour l\'instant.</span>';
+  }
+  function renderButton() {
+    go.className = ""; go.disabled = false;
+    if (phase === "wait") {
+      if (bet) { go.textContent = "Annuler la mise"; go.className = "cancel"; }
+      else { go.textContent = "Parier"; }
+    } else if (phase === "run") {
+      if (bet && !bet.done) { go.textContent = "Encaisser " + fmt(bet.stake * m); go.className = "cash"; }
+      else { go.textContent = bet ? "Encaissé" : "Prochain tour"; go.disabled = true; }
+    } else { go.textContent = "Crash"; go.disabled = true; }
+  }
+  function say(text, cls) { resultEl.textContent = text; resultEl.className = cls || ""; }
+
+  // ---------- Game ----------
+  function place() {
+    const stake = Math.floor(parseFloat($("stake").value) * 100) / 100;
+    if (!(stake >= 1)) return say("Mise minimale : 1 pt", "lose");
+    if (stake > balance) return say("Solde insuffisant", "lose");
+    const a = parseFloat($("auto").value);
+    bet = { stake, auto: a > 1 ? a : 0, done: false };
+    balance -= stake; save(); renderWallet(); say("Mise de " + fmt(stake) + " enregistrée");
+  }
+  function cancel() { balance += bet.stake; bet = null; save(); renderWallet(); say(""); }
+  function cashout(mult) {
+    if (!bet || bet.done) return;
+    const win = Math.floor(bet.stake * mult * 100) / 100;
+    bet.done = true; balance += win; stats.net += win - bet.stake; save(); renderWallet(); renderStats();
+    say(`Encaissé à ${fmt(mult)}x : +${fmt(win - bet.stake)}`, "win");
+  }
+  function startRound() { phase = "run"; crashAt = genCrash(); t0 = performance.now(); m = 1; stage.classList.remove("crashed"); }
+  function doCrash() {
+    phase = "crash"; m = crashAt; crashEnd = performance.now() + CRASH_MS;
+    stage.classList.add("crashed");
+    stats.rounds++; stats.best = Math.max(stats.best, crashAt);
+    history = [crashAt, ...history].slice(0, 14);
+    if (bet && !bet.done) { stats.net -= bet.stake; say(`Crash à ${fmt(crashAt)}x : -${fmt(bet.stake)}`, "lose"); }
+    save(); renderStats(); renderHist(); renderButton();
+  }
+  function nextWait() { phase = "wait"; bet = null; waitEnd = performance.now() + WAIT_MS; m = 1; stage.classList.remove("crashed"); renderButton(); if (balance < 1) say("Plus de points. Remets le solde à 1000.", "lose"); }
+
+  go.onclick = () => {
+    if (phase === "wait") { bet ? cancel() : place(); }
+    else if (phase === "run" && bet && !bet.done) cashout(m);
+    renderButton();
+  };
+  addEventListener("keydown", e => {
+    if (e.code === "Space" && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); if (!go.disabled) go.click(); }
+  });
+  document.querySelector(".quick").onclick = e => {
+    const q = e.target.dataset.q; if (!q) return;
+    const s = $("stake"), v = parseFloat(s.value) || 1;
+    s.value = q === "min" ? 1 : q === "half" ? Math.max(1, Math.floor(v / 2)) : q === "dbl" ? Math.min(Math.floor(balance), v * 2) : Math.max(1, Math.floor(balance));
+  };
+  $("reset").onclick = () => { balance = 1000; stats = { rounds: 0, best: 1, net: 0 }; history = []; save(); renderWallet(); renderStats(); renderHist(); if (phase === "wait" && bet) bet = null; say(""); renderButton(); };
+
+  // ---------- Drawing ----------
+  let W = 0, H = 0;
+  function fit() {
+    const r = devicePixelRatio || 1, b = stage.getBoundingClientRect();
+    W = b.width; H = b.height; cv.width = W * r; cv.height = H * r; ctx.setTransform(r, 0, 0, r, 0, 0);
+  }
+  addEventListener("resize", fit);
+
+  function draw(tSec) {
+    ctx.clearRect(0, 0, W, H);
+    const padL = 44, padB = 28, padT = 16, padR = 20;
+    const pw = W - padL - padR, ph = H - padT - padB;
+    const tMax = Math.max(8, tSec * 1.12);
+    const mMax = Math.max(2, m * 1.2);
+    const X = t => padL + (t / tMax) * pw;
+    const Y = v => padT + ph - ((v - 1) / (mMax - 1)) * ph;
+
+    // grid + labels
+    ctx.font = "500 11px 'IBM Plex Mono', monospace"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    const steps = [1.5, 2, 3, 5, 10, 20, 50, 100, 200, 500];
+    const marks = [1, ...steps.filter(s => s < mMax * 0.98)];
+    for (const v of marks.length > 6 ? marks.filter((_, i) => i % 2 === 0 || i === 0) : marks) {
+      const y = Y(v);
+      ctx.strokeStyle = "#3a2858"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.fillStyle = "#a595c4"; ctx.fillText(v + "x", padL - 8, y);
+    }
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    const tStep = tMax > 40 ? 10 : tMax > 16 ? 5 : 2;
+    for (let s = 0; s <= tMax; s += tStep) { ctx.fillStyle = "#a595c4"; ctx.fillText(s + "s", X(s), H - padB + 8); }
+
+    if (phase === "wait") return;
+    const crashed = phase === "crash", col = crashed ? "#ff3d5a" : "#ffc83d";
+    const N = 90, pts = [];
+    for (let i = 0; i <= N; i++) { const tt = tSec * i / N; pts.push([X(tt), Y(Math.exp(RATE * tt))]); }
+    const [ex, ey] = pts[N];
+    ctx.beginPath(); ctx.moveTo(pts[0][0], Y(1)); pts.forEach(p => ctx.lineTo(p[0], p[1])); ctx.lineTo(ex, Y(1)); ctx.closePath();
+    const g = ctx.createLinearGradient(0, ey, 0, Y(1)); g.addColorStop(0, col + "55"); g.addColorStop(1, col + "00");
+    ctx.fillStyle = g; ctx.fill();
+    ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+    ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineJoin = "round"; ctx.stroke();
+
+    if (bet && !bet.done || bet?.done) {   // line for the player's cash-out target
+      const t = bet.auto ? bet.auto : null;
+      if (t && t < mMax) { ctx.setLineDash([6, 6]); ctx.strokeStyle = "#3df0c8"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(padL, Y(t)); ctx.lineTo(W - padR, Y(t)); ctx.stroke(); ctx.setLineDash([]); }
+    }
+    // rocket / explosion at the tip
+    const a = Math.atan2(ey - pts[N - 3][1], ex - pts[N - 3][0]);
+    ctx.save(); ctx.translate(ex, ey);
+    if (crashed) {
+      ctx.strokeStyle = "#ff3d5a"; ctx.lineWidth = 3;
+      for (let i = 0; i < 10; i++) { const r = i * Math.PI / 5; ctx.beginPath(); ctx.moveTo(Math.cos(r) * 8, Math.sin(r) * 8); ctx.lineTo(Math.cos(r) * (i % 2 ? 18 : 26), Math.sin(r) * (i % 2 ? 18 : 26)); ctx.stroke(); }
+    } else {
+      ctx.rotate(a); ctx.fillStyle = "#f4eefc";
+      ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -7); ctx.lineTo(-4, 0); ctx.lineTo(-8, 7); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ff3d5a"; ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(-16 - Math.random() * 7, 0); ctx.lineTo(-6, 3); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---------- Loop ----------
+  function tick(now) {
+    let tSec = 0;
+    if (phase === "wait") {
+      const left = Math.max(0, waitEnd - now);
+      $("mult").textContent = (left / 1000).toFixed(1) + "s";
+      $("sub").textContent = bet ? "Mise placée, départ dans" : "Place ta mise, départ dans";
+      if (left <= 0) { startRound(); renderButton(); }
+    } else if (phase === "run") {
+      tSec = (now - t0) / 1000; m = Math.exp(RATE * tSec);
+      if (bet && !bet.done && bet.auto && m >= bet.auto && bet.auto < crashAt) cashout(bet.auto);
+      if (m >= crashAt) { doCrash(); tSec = Math.log(crashAt) / RATE; }
+      else { $("mult").textContent = fmt(m) + "x"; $("sub").textContent = "En vol"; if (bet && !bet.done) renderButton(); }
+    }
+    if (phase === "crash") {
+      tSec = Math.log(Math.max(crashAt, 1.0001)) / RATE;
+      $("mult").textContent = fmt(crashAt) + "x"; $("sub").textContent = "Crash";
+      if (now >= crashEnd) nextWait();
+    }
+    draw(tSec);
+    requestAnimationFrame(tick);
+  }
+
+  renderWallet(); renderStats(); renderHist(); renderButton(); fit();
+  requestAnimationFrame(tick);
+})();
+</script>
